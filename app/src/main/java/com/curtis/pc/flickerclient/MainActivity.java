@@ -3,9 +3,11 @@ package com.curtis.pc.flickerclient;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -93,7 +95,10 @@ class ImageAdapter extends BaseAdapter
 
         try {
 
-            ImageView imageView = new ImageView(context);
+            ScaleImageView imageView = new ScaleImageView(context);
+            imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+
+            imageView.setLayoutParams(new GridView.LayoutParams(GridView.AUTO_FIT, 250));
 
             if (convertView == null)
             {
@@ -107,7 +112,7 @@ class ImageAdapter extends BaseAdapter
             }
             else
             {
-                imageView = (ImageView)convertView;
+                imageView = (ScaleImageView)convertView;
             }
 
             return imageView;
@@ -123,27 +128,84 @@ class ImageAdapter extends BaseAdapter
 }
 
 class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-    ImageView bmImage;
+    ScaleImageView bmImage;
 
-    public DownloadImageTask(ImageView bmImage) {
+    public DownloadImageTask(ScaleImageView bmImage) {
         this.bmImage = bmImage;
     }
 
     protected Bitmap doInBackground(String... urls) {
         String urldisplay = urls[0];
-        Bitmap mIcon11 = null;
+        Bitmap bitmap = null;
         try {
             InputStream in = new java.net.URL(urldisplay).openStream();
-            mIcon11 = BitmapFactory.decodeStream(in);
+            bitmap = BitmapFactory.decodeStream(in);
         } catch (Exception e) {
             Log.e("Error", e.getMessage());
             e.printStackTrace();
         }
-        return mIcon11;
+
+        int startX = 0;
+        int startY = 0;
+
+        if (bitmap.getWidth() > 250) {
+            startX = bitmap.getWidth() - 250;
+        }
+
+        if (bitmap.getHeight() > 250) {
+            startY = bitmap.getHeight() - 250;
+        }
+
+        Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, startX, startY, 250, 250);
+
+        return resizedBitmap;
     }
 
     protected void onPostExecute(Bitmap result) {
         bmImage.setImageBitmap(result);
+    }
+}
+
+class ScaleImageView extends ImageView {
+
+    public ScaleImageView(Context context) {
+        super(context);
+    }
+
+    public ScaleImageView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    public ScaleImageView(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        try {
+            Drawable drawable = getDrawable();
+            if (drawable == null) {
+                setMeasuredDimension(0, 0);
+            } else {
+                int measuredWidth = MeasureSpec.getSize(widthMeasureSpec);
+                int measuredHeight = MeasureSpec.getSize(heightMeasureSpec);
+                if (measuredHeight == 0 && measuredWidth == 0) { //Height and width set to wrap_content
+                    setMeasuredDimension(measuredWidth, measuredHeight);
+                } else if (measuredHeight == 0) { //Height set to wrap_content
+                    int width = measuredWidth;
+                    int height = width * drawable.getIntrinsicHeight() / drawable.getIntrinsicWidth();
+                    setMeasuredDimension(width, height);
+                } else if (measuredWidth == 0) { //Width set to wrap_content
+                    int height = measuredHeight;
+                    int width = height * drawable.getIntrinsicWidth() / drawable.getIntrinsicHeight();
+                    setMeasuredDimension(width, height);
+                } else { //Width and height are explicitly set (either to match_parent or to exact value)
+                    setMeasuredDimension(measuredWidth, measuredHeight);
+                }
+            }
+        } catch (Exception e) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
     }
 }
 
